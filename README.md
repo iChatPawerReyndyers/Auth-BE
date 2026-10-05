@@ -23,6 +23,29 @@ Runs on `http://localhost:8080`.
 Liveness check: `GET /health`. Interactive API docs (Swagger UI):
 `http://localhost:8080/swagger-ui.html`.
 
+## Deploy to Render
+
+Create a Web Service from this repository with:
+
+- Runtime: Docker
+- Root Directory: leave blank when this repository itself is `Auth-BE`
+- Dockerfile Path: `./Dockerfile`
+- Health Check Path: `/health` (optional)
+
+Add these in Render's Environment settings. Never commit credential values:
+
+| Variable | Required | Purpose |
+|---|---|---|
+| `NEON_DATABASE_USERNAME` | Yes | Neon database role |
+| `NEON_DATABASE_PASSWORD` | Yes | Rotated Neon database password |
+| `GOOGLE_CLIENT_IDS` | Only for Google sign-in | Comma-separated Google client IDs accepted by the backend |
+| `FACEBOOK_APP_ID` | Only for Facebook sign-in | Facebook app ID |
+| `FACEBOOK_APP_SECRET` | Only for Facebook sign-in | Facebook app secret |
+
+Render supplies `PORT`; the Docker entrypoint uses it for Spring Boot, so do
+not set `SERVER_PORT` yourself. Do not set `SPRING_PROFILES_ACTIVE=dev` on
+Render; that profile accepts any password for an existing username.
+
 Dev/testing profile (accepts any password at login — never use outside local dev):
 ```
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
