@@ -118,9 +118,15 @@ Authenticates an existing user.
   "success": true,
   "message": "Login successful",
   "username": "jane_doe",
-  "profileComplete": true
+  "profileComplete": true,
+  "accessToken": "<short-lived app-audience JWT>"
 }
 ```
+When the profile is complete, `accessToken` is a 10-minute JWT signed with
+`AUTH_JWT_SECRET`; `sub` is the Auth user ID and `aud` is the request's
+`appId`. A trusted app backend can verify it to resolve its own local user
+identity. Do not use it as a long-lived mobile session token. When
+`profileComplete` is false, no token is issued until profile completion.
 `profileComplete` is `false` when `birthYear` or `phoneNumber` is still
 missing — only possible for a Google/Facebook sign-up, since password
 registration requires both. **The frontend must treat `profileComplete: false`
@@ -244,10 +250,11 @@ registration already requires both.
 | `username` | string | required |
 | `birthYear` | integer | required, between 1900 and 2026 |
 | `phoneNumber` | string | required, 7–15 digits, optional leading `+` |
+| `appId` | string | optional for older clients; when supplied, issues a token for this app after completion |
 
 ### Success — `200 OK`
 ```json
-{ "success": true, "message": "Profile completed", "username": "jane_doe", "profileComplete": true }
+{ "success": true, "message": "Login successful", "username": "jane_doe", "profileComplete": true, "accessToken": "<short-lived app-audience JWT>" }
 ```
 
 ### Errors — `400 Bad Request`
@@ -348,7 +355,7 @@ curl -X POST http://localhost:8080/api/auth/password/reset \
 
 ## Notes for integrators
 
-- **No token is issued.** `login` and `register` only confirm success/failure — the response carries no session token, cookie, or JWT. Today this API is only suitable for a single trusted client that manages its own "is logged in" state locally after a successful call. If a second app needs to share authentication state with this backend, see the Integration Playbook (`INTEGRATION_PLAYBOOK.md`) for options.
+- **Identity token:** successful login/OAuth and profile completion (when `appId` is supplied) return a 10-minute `accessToken` for the requesting app. A trusted app backend can verify it with the shared `AUTH_JWT_SECRET`; `sub` is the Auth user ID and `aud` is `appId`. The token is intended for backend identity exchange, not long-lived storage in a mobile app. This Auth service does not automatically protect a consuming app's APIs; each backend must verify the token and map it to its own local user ID.
 - **Subscription gate**: login only succeeds if the user's `subscriptionExpiresAt` is today or later. A new registration gets a 30-day trial by default (see the register table above) — after that, `login` will return the subscription error above until the date is extended. There's currently no endpoint to renew/extend a subscription from the API; that value is only set at registration or directly in the database for now.
 - **Passwords** are hashed with BCrypt server-side; plaintext passwords are never stored.
 - **Google/Facebook login** requires `app.oauth.google.client-ids`, `app.oauth.facebook.app-id`, and `app.oauth.facebook.app-secret` to be set (via env vars) — see `OAUTH_SETUP.md`. Until then, both endpoints return a clear "not configured yet" error rather than failing silently.

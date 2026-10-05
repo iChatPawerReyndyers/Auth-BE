@@ -42,7 +42,10 @@ AuthResponse response = client.post()
 
 Same pattern against `POST {AUTH_API_BASE_URL}/login` with `{ username, password }`.
 
-On success, your app decides what "logged in" means locally — see the next section, because this API doesn't hand you a token to carry that state.
+When the profile is complete, the response includes a short-lived `accessToken`
+whose `aud` is the request's `appId`. Do not treat it as a persistent mobile
+session token; send it to a trusted app backend to exchange the Auth subject for
+that app's own local user ID.
 
 ## 3b. Social login (Google / Facebook)
 
@@ -57,13 +60,23 @@ backend console until a real SMS provider is configured — see
 `{ username, otp, newPassword, confirmNewPassword }` completes the reset.
 Full details and error messages in `API.md`.
 
-## 4. Decide how your app will track the session
+## 4. Resolve the Auth identity in your app backend
 
-This backend currently returns only `{ success, message, username }` — no cookie, session ID, or JWT. Pick one based on your needs:
+The Auth `sub` is not automatically the consuming app's database ID. Each app
+backend must verify the token signature, issuer, audience, and expiration, then
+map the Auth subject to its own local user record. Never trust a client-supplied
+username/email as proof of identity and never invent a local user ID.
 
-- **Single trusted client, low stakes (fastest to ship):** on a successful login, your app just remembers the username locally (e.g. in app state or secure storage) and treats that as "logged in." Nothing to add to the backend. Fine for a prototype or internal tool; not suitable if you need the backend to verify who's calling it on later requests.
-- **Multiple apps / real session verification (recommended for anything beyond a prototype):** add JWT issuance to this backend — `login` returns a signed token, and other endpoints validate it via a filter. This is the standard way to let a second app trust "this user is logged in" without re-sending credentials on every call. I can implement this (a `jjwt`-based token endpoint plus a validation filter) if you want to go this route — just ask.
-- **Shared-cookie session (only if both apps live under the same domain):** switch Spring Security to stateful sessions with a shared cookie store. Rarely the right choice for a mobile client, so usually only worth it for two web apps on the same domain.
+Cartculate implements this exchange at `POST /api/auth/session` on its own
+backend. It returns Cartculate's numeric `UserDto.id`. If an Auth subject is
+not mapped and a Cartculate username already exists, the endpoint requires the
+old Cartculate credentials once to link that record; otherwise the user may
+explicitly create a fresh Cartculate profile. Both Render backends must have
+the same `AUTH_JWT_SECRET` configured.
+
+This exchange does not itself protect other app API routes. Those routes must
+also validate bearer tokens and authorize the token's mapped local user ID
+before being considered protected.
 
 ## 5. Handle errors consistently
 
@@ -74,7 +87,7 @@ Every error response has a `message` field (and `errors` for field-level validat
 - [ ] Change CORS from `allowedOriginPatterns: "*"` to the exact origins of your apps (`SecurityConfig.java`).
 - [ ] Confirm the backend is **not** running with the `dev` Spring profile (that profile accepts any password).
 - [ ] Serve the backend over HTTPS once it's reachable outside your machine.
-- [ ] If more than one app needs to verify "is this user logged in" independently, add the JWT flow from step 4 rather than relying on each app remembering the username locally.
+- [ ] Make every protected app API verify the bearer token and authorize its mapped local user; the identity-exchange endpoint alone does not protect data routes.
 - [ ] Swap the H2 in-memory database for a persistent one (MySQL/Postgres) — H2 resets on every restart.
 
 ## 7. Testing your integration locally

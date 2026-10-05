@@ -20,6 +20,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final AuthTokenService authTokenService;
 
     // Dev/testing only — see application-dev.properties. Defaults to false.
     @Value("${app.security.skip-password-check:false}")
@@ -39,9 +40,10 @@ public class AuthService {
     @Value("${app.clients.free-ids:}")
     private String freeClientIdsRaw;
 
-    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
+    public AuthService(UserRepository userRepository, PasswordEncoder passwordEncoder, AuthTokenService authTokenService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.authTokenService = authTokenService;
     }
 
     public int getDefaultTrialDays() {
@@ -98,7 +100,7 @@ public class AuthService {
             }
         }
 
-        return issueLoginResponse(user, appRequiresSubscription(request.getAppId()));
+        return issueLoginResponse(user, request.getAppId());
     }
 
     /**
@@ -107,7 +109,8 @@ public class AuthService {
      * app's ID) and builds the response. OAuthService calls this once it has
      * resolved (or created/linked) the User.
      */
-    public AuthResponse issueLoginResponse(User user, boolean requiresSubscription) {
+    public AuthResponse issueLoginResponse(User user, String appId) {
+        boolean requiresSubscription = appRequiresSubscription(appId);
         if (requiresSubscription) {
             boolean hasActiveSubscription = user.getSubscriptionExpiresAt() != null
                     && !user.getSubscriptionExpiresAt().isBefore(LocalDate.now());
@@ -119,7 +122,12 @@ public class AuthService {
             }
         }
 
-        return new AuthResponse(true, "Login successful", user.getUsername(), isProfileComplete(user));
+        boolean profileComplete = isProfileComplete(user);
+        AuthResponse response = new AuthResponse(true, "Login successful", user.getUsername(), profileComplete);
+        if (profileComplete) {
+            response.setAccessToken(authTokenService.issue(user, appId));
+        }
+        return response;
     }
 
     /**
@@ -128,7 +136,7 @@ public class AuthService {
      * sign-up that didn't provide them. Doesn't touch the subscription
      * check; the account was already past that to get here.
      */
-    public AuthResponse completeProfile(String username, Integer birthYear, String phoneNumber) {
+    public AuthResponse completeProfile(String username, Integer birthYear, String phoneNumber, String appId) {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new AuthException("Account not found"));
 
@@ -136,7 +144,12 @@ public class AuthService {
         user.setPhoneNumber(phoneNumber);
         userRepository.save(user);
 
-        return new AuthResponse(true, "Profile completed", user.getUsername(), true);
+        if (appId == null || appId.isBlank()) {
+            return new AuthResponse(true, "Profile completed", user.getUsername(), true);
+        }
+        AuthResponse response = issueLoginResponse(user, appId);
+        response.setMessage("Profile completed");
+        return response;
     }
 
     /**

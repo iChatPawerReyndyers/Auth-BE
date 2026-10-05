@@ -16,6 +16,10 @@ public class CompleteProfileRequest {
     @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Phone number must be 7-15 digits, optionally starting with +")
     private String phoneNumber;
 
+    // Optional for backwards compatibility; the SDK supplies it so a token
+    // can be issued for the app whose login initiated profile completion.
+    private String appId;
+
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
@@ -24,4 +28,7 @@ public class CompleteProfileRequest {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public String getAppId() { return appId; }
+    public void setAppId(String appId) { this.appId = appId; }
 }

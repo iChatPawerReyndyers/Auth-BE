@@ -13,6 +13,7 @@ the current username and a newly rotated password; do not commit either value):
 ```
 export NEON_DATABASE_USERNAME='your-neon-username'
 export NEON_DATABASE_PASSWORD='your-rotated-neon-password'
+export AUTH_JWT_SECRET='same-random-secret-configured-in-trusted-app-backends'
 ```
 
 ```
@@ -38,6 +39,8 @@ Add these in Render's Environment settings. Never commit credential values:
 |---|---|---|
 | `NEON_DATABASE_USERNAME` | Yes | Neon database role |
 | `NEON_DATABASE_PASSWORD` | Yes | Rotated Neon database password |
+| `AUTH_JWT_SECRET` | Yes | Random secret of at least 32 bytes; configure the same value in Cartculate's backend |
+| `APP_FREE_CLIENT_IDS` | Optional | Comma-separated free app IDs; defaults to `stickies,galleries`. Add `cartculate` only if it should bypass subscriptions. |
 | `GOOGLE_CLIENT_IDS` | Only for Google sign-in | Comma-separated Google client IDs accepted by the backend |
 | `FACEBOOK_APP_ID` | Only for Facebook sign-in | Facebook app ID |
 | `FACEBOOK_APP_SECRET` | Only for Facebook sign-in | Facebook app secret |
@@ -45,6 +48,8 @@ Add these in Render's Environment settings. Never commit credential values:
 Render supplies `PORT`; the Docker entrypoint uses it for Spring Boot, so do
 not set `SERVER_PORT` yourself. Do not set `SPRING_PROFILES_ACTIVE=dev` on
 Render; that profile accepts any password for an existing username.
+Auth identity tokens are short-lived (10 minutes), signed with `AUTH_JWT_SECRET`,
+and audience-bound to the requesting `appId`.
 
 Dev/testing profile (accepts any password at login — never use outside local dev):
 ```

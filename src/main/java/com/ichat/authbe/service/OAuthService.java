@@ -79,7 +79,7 @@ public class OAuthService {
         String familyName = (String) claims.getOrDefault("family_name", "");
 
         User user = resolveOrCreateUser(AuthProvider.GOOGLE, providerId, email, givenName, familyName);
-        return authService.issueLoginResponse(user, authService.appRequiresSubscription(appId));
+        return authService.issueLoginResponse(user, appId);
     }
 
     public AuthResponse loginWithFacebook(String accessToken, String appId) {
@@ -126,7 +126,7 @@ public class OAuthService {
         String lastName = (String) profile.getOrDefault("last_name", "");
 
         User user = resolveOrCreateUser(AuthProvider.FACEBOOK, providerId, email, firstName, lastName);
-        return authService.issueLoginResponse(user, authService.appRequiresSubscription(appId));
+        return authService.issueLoginResponse(user, appId);
     }
 
     /**

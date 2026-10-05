@@ -67,7 +67,7 @@ public class AuthController {
     @PostMapping("/profile/complete")
     public ResponseEntity<AuthResponse> completeProfile(@Valid @RequestBody CompleteProfileRequest request) {
         return ResponseEntity.ok(authService.completeProfile(
-                request.getUsername(), request.getBirthYear(), request.getPhoneNumber()
+            request.getUsername(), request.getBirthYear(), request.getPhoneNumber(), request.getAppId()
         ));
     }
 }

@@ -4,6 +4,7 @@ public class AuthResponse {
     private boolean success;
     private String message;
     private String username;
+    private String accessToken;
     // True unless birthYear/phoneNumber are still missing (e.g. a
     // Google/Facebook sign-up that hasn't completed its profile yet).
     // The frontend shows a blocking "complete your profile" modal when false.
@@ -32,6 +33,9 @@ public class AuthResponse {
 
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
+
+    public String getAccessToken() { return accessToken; }
+    public void setAccessToken(String accessToken) { this.accessToken = accessToken; }
 
     public boolean isProfileComplete() { return profileComplete; }
     public void setProfileComplete(boolean profileComplete) { this.profileComplete = profileComplete; }
